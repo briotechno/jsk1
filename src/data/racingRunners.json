@@ -1,0 +1,14 @@
+[
+  { "id": 1, "name": "Bring Your Best", "jockey": "Brad Elder", "trainer": "Darren Elder", "age": 6, "back": [{ "p": 1.47, "s": 10.52 }, { "p": 1.46, "s": 8 }, { "p": 1.45, "s": 40.09 }], "lay": [{ "p": 1.49, "s": 12.6 }, { "p": 1.5, "s": 2.61 }, { "p": 1.51, "s": 956.11 }] },
+  { "id": 2, "name": "Masters Lady", "jockey": "Jacey Botes", "trainer": "R. R. Magner", "age": 3, "back": [{ "p": 5.2, "s": 7.3 }, { "p": 5.1, "s": 15.15 }, { "p": 5, "s": 7.88 }], "lay": [{ "p": 5.6, "s": 11.96 }, { "p": 5.7, "s": 5.85 }, { "p": 5.8, "s": 9.73 }] },
+  { "id": 3, "name": "Chericherilady", "jockey": "Bavish Soodoo", "trainer": "B. Webber", "age": 3, "back": [{ "p": 55, "s": 1 }, { "p": 48, "s": 3.06 }, { "p": 44, "s": 5.28 }], "lay": [{ "p": 120, "s": 1.19 }, { "p": 130, "s": 3.16 }, { "p": 140, "s": 2.31 }] },
+  { "id": 4, "name": "Hurricane Power", "jockey": "Girish Samo-Burthia", "trainer": "F. P. Habib", "age": 3, "back": [{ "p": 29, "s": 2.49 }, { "p": 28, "s": 1.15, "h": true }, { "p": 27, "s": 5.14, "h": true }], "lay": [{ "p": 42, "s": 2.24 }, { "p": 110, "s": 2.73 }, { "p": 240, "s": 7.68 }] },
+  { "id": 5, "name": "Money Galore", "jockey": "Mxolisi Mbuto", "trainer": "C. J. Lensley", "age": 3, "back": [{ "p": 40, "s": 1 }, { "p": 36, "s": 1.02 }, { "p": 34, "s": 3.81 }], "lay": [{ "p": 75, "s": 2.26 }, { "p": 110, "s": 2.64 }, { "p": 280, "s": 2 }] },
+  { "id": 6, "name": "Empress Wu", "jockey": "Wilmien Fourie", "trainer": "J. S. Roux", "age": 4, "back": [{ "p": 20, "s": 2.99 }, { "p": 19.5, "s": 1 }, { "p": 18.5, "s": 4.84 }], "lay": [{ "p": 25, "s": 1.04, "h": true }, { "p": 26, "s": 1.54, "h": true }, { "p": 27, "s": 2, "h": true }] },
+  { "id": 7, "name": "Power Of Tiger", "jockey": "Kobeli Lihaba", "trainer": "P. F. Matchett", "age": 4, "back": [{ "p": 23, "s": 1.04 }, { "p": 22, "s": 4.11 }, { "p": 21, "s": 4.5 }], "lay": [{ "p": 32, "s": 3.77 }, { "p": 34, "s": 2 }, { "p": 40, "s": 2.9 }] },
+  { "id": 8, "name": "Pure Delight", "jockey": "Girish Dookhit", "trainer": "P. F. Matchett", "age": 2, "back": [{ "p": 75, "s": 1.83 }, { "p": 65, "s": 4.2 }, { "p": 55, "s": 2.21 }], "lay": [{ "p": 110, "s": 1.97 }, { "p": 270, "s": 2.5 }, { "p": 300, "s": 1}] },
+  { "id": 9, "name": "Duchess Di", "isRemoved": true, "percent": "14%", "time": "4/2/2026 10:58:41 AM (IST)", "jockey": "Blaine Marx-Jacobson", "trainer": "A. P. Peter", "age": 3 },
+  { "id": 10, "name": "Charleston Dawn", "isRemoved": true, "percent": "0.72%", "time": "4/2/2026 10:58:42 AM (IST)", "jockey": "Divesh Ramkhalawon", "trainer": "M. Khan", "age": 3 },
+  { "id": 11, "name": "Hoc Est Vita", "isRemoved": true, "percent": "11.38%", "time": "4/2/2026 10:58:43 AM (IST)", "jockey": "Trent Mayhew", "trainer": "T. Spies", "age": 2 },
+  { "id": 12, "name": "Bella Boop Boop", "isRemoved": true, "percent": "3%", "time": "4/2/2026 11:07:39 AM (IST)", "jockey": "Sifisokuhle Bungane", "trainer": "C. J. Lensley", "age": 4 }
+]

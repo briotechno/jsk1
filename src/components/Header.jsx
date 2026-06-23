@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logo from "../assets/logo.png";
+import { userController } from "../controller";
 import { BsAndroid2 } from "react-icons/bs";
 import { FaSearchPlus, FaChevronDown, FaHome } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
@@ -14,6 +15,29 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
   const [showExposure, setShowExposure] = useState(true);
+  const [balance, setBalance] = useState("0.00");
+  const [exposure, setExposure] = useState("0.00");
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const fetchBalance = async () => {
+        try {
+          const token = localStorage.getItem("loginToken") || "";
+          const response = await userController.getBalance(token);
+          if (response && response.error === "0") {
+            setBalance(response.Balance || "0.00");
+            setExposure(response.Liability || "0.00");
+          }
+        } catch (error) {
+          console.error("Failed to fetch balance", error);
+        }
+      };
+      
+      fetchBalance();
+      const interval = setInterval(fetchBalance, 10000); // Poll every 10s
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn]);
 
   const menuRoutes = {
     "Withdraw Statement": "/withdraw-statement",
@@ -93,8 +117,8 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
                   Withdraw
                 </Link>
                 <div className="hidden sm:flex flex-col text-white ml-1 mr-2 cursor-default">
-                  <span className="text-[13px] font-bold leading-none">Balance:0</span>
-                  <span className="text-[13px] font-bold leading-none mt-1">Exp:0</span>
+                  <span className="text-[13px] font-bold leading-none">Balance:{balance}</span>
+                  <span className="text-[13px] font-bold leading-none mt-1">Exp:{exposure}</span>
                 </div>
                 <div
                   className="flex items-center gap-1 text-white font-bold cursor-pointer hover:text-white/90 relative"
@@ -199,12 +223,12 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
 
           {isLoggedIn ? (
             <div className="flex flex-col items-end text-white relative">
-              {showBalance && <span className="text-[13px] font-bold leading-tight">Balance:0</span>}
+              {showBalance && <span className="text-[13px] font-bold leading-tight">Balance:{balance}</span>}
               <div
                 className="flex items-center gap-1 cursor-pointer mt-0.5"
                 onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
               >
-                {showExposure && <span className="text-[13px] font-bold leading-tight">Exp:0</span>}
+                {showExposure && <span className="text-[13px] font-bold leading-tight">Exp:{exposure}</span>}
                 <span className="text-[14px] font-bold leading-tight ml-1">Kingraja11</span>
                 <FaChevronDown size={10} className={`transition-transform duration-300 ${isAccountMenuOpen ? 'rotate-180' : ''}`} />
               </div>

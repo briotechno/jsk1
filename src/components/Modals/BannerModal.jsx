@@ -1,9 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
 import { FaExclamationTriangle } from 'react-icons/fa';
 import iplBanner from '../../assets/ipl_banner.png';
+import { userController } from '../../controller';
 
 const BannerModal = ({ isOpen, onClose }) => {
+  const [popupImageHtml, setPopupImageHtml] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchPopup = async () => {
+        try {
+          const token = localStorage.getItem("loginToken") || "";
+          const response = await userController.getPopupImage(token);
+          if (Array.isArray(response) && response.length > 0 && response[0].image) {
+            setPopupImageHtml(response[0].image);
+          }
+        } catch (error) {
+          console.error("Failed to fetch popup image", error);
+        }
+      };
+      fetchPopup();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -27,11 +47,18 @@ const BannerModal = ({ isOpen, onClose }) => {
 
         {/* Content / Banner */}
         <div className="p-0 flex-1 overflow-hidden">
-          <img
-            src={iplBanner}
-            alt="IPL 2026 Banner"
-            className="w-full h-full object-fill block border-0 select-none pointer-events-none"
-          />
+          {popupImageHtml ? (
+            <div 
+              className="w-full h-full object-fill block border-0 select-none pointer-events-none popup-img-container" 
+              dangerouslySetInnerHTML={{ __html: popupImageHtml }}
+            />
+          ) : (
+            <img
+              src={iplBanner}
+              alt="IPL 2026 Banner"
+              className="w-full h-full object-fill block border-0 select-none pointer-events-none"
+            />
+          )}
         </div>
       </div>
     </div>

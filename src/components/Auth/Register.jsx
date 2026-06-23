@@ -1,13 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaUser, FaKey, FaPhoneAlt, FaHandPointDown } from 'react-icons/fa';
 import { countries } from '../../utils/countries';
+import { authController } from '../../controller';
 
 export default function Register() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(countries.find(c => c.code === 'IN') || countries[0]);
   const [search, setSearch] = useState('');
   const dropdownRef = useRef(null);
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -23,6 +35,62 @@ export default function Register() {
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.dialCode.includes(search)
   );
+
+  const handleSendOtp = async () => {
+    if (!phone) {
+      setError('Please enter a mobile number first.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await authController.sendOtp(phone);
+      if (response && (response.error === "0" || response.error === 0)) {
+        setIsOtpSent(true);
+        alert('OTP sent successfully!');
+      } else {
+        setError(response?.msg || 'Failed to send OTP');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!username || !password || !confirmPassword || !phone || !otp) {
+      setError('Please fill in all fields including OTP.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const payload = {
+        mobile: phone,
+        otp,
+        username,
+        password,
+        campaignCode: ''
+      };
+      const response = await authController.createUser(payload);
+      if (response && (response.error === "0" || response.error === 0)) {
+        alert('Account created successfully!');
+        navigate('/login');
+      } else {
+        setError(response?.msg || 'Failed to create account');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col">
@@ -55,12 +123,16 @@ export default function Register() {
         <div className="border-t border-[#c6c6c6] flex-grow max-w-[30px]" />
       </div>
 
-      <form className="space-y-[14px]">
+      {error && <div className="bg-red-100 text-red-600 p-2 text-[14px] rounded-[3px] mb-4 text-center border border-red-200">{error}</div>}
+
+      <form className="space-y-[14px]" onSubmit={handleRegister}>
         {/* Username */}
         <div className="flex bg-white border border-[#d4d4d4] rounded-[3px] overflow-hidden h-[44px]">
           <input
             type="text"
             placeholder="Username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
             className="flex-grow px-3 bg-transparent text-[15px] text-gray-700 placeholder-gray-500 focus:outline-none placeholder:font-normal"
           />
           <div className="bg-[#e4e4e4] w-[44px] border-l border-[#d4d4d4] flex items-center justify-center flex-shrink-0">
@@ -73,6 +145,8 @@ export default function Register() {
           <input
             type="password"
             placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
             className="flex-grow px-3 bg-transparent text-[15px] text-gray-700 placeholder-gray-500 focus:outline-none placeholder:font-normal"
           />
           <div className="bg-[#e4e4e4] w-[44px] border-l border-[#d4d4d4] flex items-center justify-center flex-shrink-0">
@@ -85,6 +159,8 @@ export default function Register() {
           <input
             type="password"
             placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
             className="flex-grow px-3 bg-transparent text-[15px] text-gray-700 placeholder-gray-500 focus:outline-none placeholder:font-normal"
           />
           <div className="bg-[#e4e4e4] w-[44px] border-l border-[#d4d4d4] flex items-center justify-center flex-shrink-0">
@@ -138,7 +214,13 @@ export default function Register() {
               </div>
             )}
 
-            <input type="tel" className="w-full px-3 bg-transparent text-[15px] text-gray-700 focus:outline-none placeholder:font-normal" placeholder="" />
+            <input 
+              type="tel" 
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              className="w-full px-3 bg-transparent text-[15px] text-gray-700 focus:outline-none placeholder:font-normal" 
+              placeholder="" 
+            />
 
             {/* Right Icon Block */}
             <div className="bg-[#e4e4e4] w-[44px] border-l border-[#d4d4d4] flex items-center justify-center flex-shrink-0 rounded-r-[2px]">
@@ -146,17 +228,39 @@ export default function Register() {
             </div>
           </div>
 
-          <button type="button" className="bg-[#66ae95] hover:bg-[#528d79] text-white text-[14px] px-3 rounded-[3px] font-medium whitespace-nowrap transition-colors flex-shrink-0 shadow-sm">
-            Verify Number
+          <button 
+            type="button" 
+            onClick={handleSendOtp}
+            disabled={loading}
+            className="bg-[#66ae95] hover:bg-[#528d79] text-white text-[14px] px-3 rounded-[3px] font-medium whitespace-nowrap transition-colors flex-shrink-0 shadow-sm disabled:opacity-50"
+          >
+            {isOtpSent ? 'Resend OTP' : 'Verify Number'}
           </button>
         </div>
+
+        {/* OTP Input Field */}
+        {isOtpSent && (
+          <div className="flex bg-white border border-[#d4d4d4] rounded-[3px] overflow-hidden h-[44px]">
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={e => setOtp(e.target.value)}
+              className="flex-grow px-3 bg-transparent text-[15px] text-gray-700 placeholder-gray-500 focus:outline-none placeholder:font-normal"
+            />
+            <div className="bg-[#e4e4e4] w-[44px] border-l border-[#d4d4d4] flex items-center justify-center flex-shrink-0">
+              <FaKey className="text-[#333] text-[16px]" />
+            </div>
+          </div>
+        )}
 
         {/* Submit */}
         <button
           type="submit"
-          className="w-full bg-[#71a3e8] hover:bg-[#5e92db] text-white font-medium py-[11px] px-4 rounded-[3px] flex items-center justify-center relative mt-5 transition-colors shadow-sm text-[16px]"
+          disabled={loading}
+          className="w-full bg-[#71a3e8] hover:bg-[#5e92db] text-white font-medium py-[11px] px-4 rounded-[3px] flex items-center justify-center relative mt-5 transition-colors shadow-sm text-[16px] disabled:opacity-50"
         >
-          <span>Register</span>
+          <span>{loading ? 'Processing...' : 'Register'}</span>
           <div className="absolute right-3">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>

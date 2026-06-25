@@ -3,20 +3,36 @@ import { FaBolt, FaUniversity, FaCoins } from 'react-icons/fa';
 import { BsArrowLeft } from 'react-icons/bs';
 import { MdOutlineInfo } from 'react-icons/md';
 
-const PaymentCard = ({ name, badge, sub, qr, limit, icon: Icon, onPayNow }) => {
+const PaymentCard = ({ method, icon: Icon, onPayNow }) => {
+  const { Title, Name, Type, Min, Max, QR, Qr, Status, Acc_Name, BankACnme, Image } = method;
+  
+  if (Status === "False" || Status === false) return null;
+
+  const displayTitle = Title || Name || Acc_Name || BankACnme || 'Payment Method';
+  const displayQr = QR || Qr;
+
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:')) return url;
+    if (url.startsWith('/9j/') || url.startsWith('iVBORw0KGgo')) return `data:image/jpeg;base64,${url}`;
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) return `https://api.v11.su${url}`;
+    return `https://api.v11.su/${url}`;
+  };
+
   return (
     <div className="border border-gray-200 rounded-2xl shadow-sm bg-white flex flex-col h-full overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:border-[#64748b] hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.5),0_8px_10px_-6px_rgba(0,0,0,0.5)] relative">
-      <div className="h-[4px] w-full bg-linear-to-r from-[#0088CC] to-[#035273]"></div>
+      <div className="h-[4px] w-full bg-gradient-to-r from-[#0088CC] to-[#035273]"></div>
       <div className="text-[#111] border-b border-black/5 bg-transparent p-4 pb-2 w-full flex flex-wrap justify-between items-start min-h-[55px] rounded-t-[3px]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
             <Icon size={20} />
           </div>
           <div>
-            <h3 className="font-extrabold text-gray-800 text-lg uppercase tracking-tight">{name}</h3>
-            {badge && (
-              <span className="text-[#0088CC] font-medium px-3 py-1.5 rounded-[8px] bg-[#0088CC]/10 border border-[#0088CC]/20 inline-block w-fit uppercase text-[16px]">
-                {badge}
+            <h3 className="font-extrabold text-gray-800 text-lg uppercase tracking-tight">{displayTitle}</h3>
+            {Type && (
+              <span className="text-[#0088CC] font-medium px-3 py-1.5 rounded-[8px] bg-[#0088CC]/10 border border-[#0088CC]/20 inline-block w-fit uppercase text-[16px] mt-1">
+                {Type}
               </span>
             )}
           </div>
@@ -27,36 +43,30 @@ const PaymentCard = ({ name, badge, sub, qr, limit, icon: Icon, onPayNow }) => {
       </div>
 
       <div className="p-5 flex flex-col flex-1">
-        {sub && (
-          <div className="text-[#0088CC] font-medium px-3 py-1.5 rounded-[8px] bg-[#0088CC]/10 border border-[#0088CC]/20 relative overflow-hidden z-0 inline-block w-fit uppercase text-[16px] mb-4">
-            {sub}
-          </div>
-        )}
-
-        {qr && (
+        {displayQr ? (
           <div className="flex flex-col items-center justify-center bg-transparent py-6 rounded-2xl mb-4">
-            {name === 'LEO PAY' && (
-              <div className="text-[#0088CC] font-medium px-3 py-1.5 rounded-[8px] bg-[#0088CC]/10 border border-[#0088CC]/20 relative overflow-hidden z-0 inline-flex items-center gap-1 w-fit uppercase text-[16px] mb-3 cursor-pointer text-center">
-                LEO <span className="flex items-center italic underline">📋 UPLOD@UTR</span>
-              </div>
-            )}
-            {name === 'TEST' && (
-              <span className="font-bold text-gray-700 flex items-center gap-2 uppercase text-[15px] mb-3">TEST <span className="flex items-center italic underline underline-offset-4 cursor-pointer">📋 TEST</span></span>
-            )}
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${name === 'TEST' ? 'TEST_DATA' : 'JSK1DEPOSIT'}`}
+              src={getImageUrl(displayQr)}
               alt="QR Code"
               className="w-32 h-32 object-contain"
             />
           </div>
+        ) : Image ? (
+           <div className="flex flex-col items-center justify-center bg-transparent py-6 rounded-2xl mb-4">
+            <img
+              src={getImageUrl(Image)}
+              alt="Method Info"
+              className="w-full h-auto max-h-32 object-contain"
+            />
+          </div>
+        ) : (
+          <div className="h-28 flex items-center justify-center text-gray-400 italic">No Image</div>
         )}
 
-        {!qr && !sub && <div className="h-28"></div>}
-
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-          <span className="text-black font-normal text-lg">Limit: {limit}</span>
+          <span className="text-black font-normal text-lg">Limit: {Min} - {Max}</span>
           <button
-            onClick={onPayNow}
+            onClick={() => onPayNow(method)}
             className="bg-[#0088CC] text-white px-4 py-2 rounded-[10px] font-bold text-sm h-[38px] border-0 transition-transform duration-200 hover:scale-105 hover:opacity-85 no-underline shadow-sm"
           >
             Pay Now
@@ -67,22 +77,12 @@ const PaymentCard = ({ name, badge, sub, qr, limit, icon: Icon, onPayNow }) => {
   );
 };
 
-const PaymentMethods = ({ amount, onBack, onPayNow }) => {
+const PaymentMethods = ({ amount, onBack, onPayNow, methods }) => {
   const [activeTab, setActiveTab] = useState('UPI');
 
-  const upiMethods = [
-    { id: 'turbo', name: 'TURBO PAY', sub: 'SUPERFAST (UPI+IMPS)', limit: '200 - 100000' },
-    { id: 'leo', name: 'LEO PAY', badge: 'PAY', limit: '500 - 100000', qr: true },
-    { id: 'tylt', name: 'TYLT UPI', sub: 'WE ACCEPT UPI PAYMENT', limit: '500 - 50000' },
-    { id: 'timi', name: 'TIMIPAY', badge: 'UPI', limit: '500 - 50000' },
-    { id: 'paypay', name: 'PAY-PAY', badge: 'UPI', limit: '500 - 50000' },
-    { id: 's88', name: 'S88-PAY', sub: 'ONLY UPI PAYMENTS', limit: '500 - 40000' },
-    { id: 'cowpay', name: 'COWPAY', sub: 'UPI PAYMENTS ONLY', limit: '500 - 100000' },
-  ];
-
-  const cryptoMethods = [
-    { id: 'tyltpay', name: 'TYLTPAY', sub: 'CRYPTO PAYMENT', limit: '4675 - 1000000' },
-  ];
+  const upiMethods = methods.filter(m => m.Type?.toUpperCase() === 'UPI');
+  const bankMethods = methods.filter(m => m.Type?.toUpperCase() === 'BANK');
+  const cryptoMethods = methods.filter(m => m.Type?.toUpperCase() === 'CRYPTO');
 
   return (
     <div className="p-4 bg-white min-h-screen">
@@ -95,7 +95,7 @@ const PaymentMethods = ({ amount, onBack, onPayNow }) => {
         </button>
 
         <div className="bg-white px-5 py-[10px] rounded-full border border-[#c9cdd5] inline-flex items-center gap-2 font-normal text-[20px] shadow-[0_2px_4px_rgba(0,0,0,0.1)] text-black">
-          Selected Amount: <span className="bg-linear-to-r from-[#4ade80] to-[#3b82f6] bg-clip-text text-transparent font-bold">{amount}</span>
+          Selected Amount: <span className="bg-gradient-to-r from-[#4ade80] to-[#3b82f6] bg-clip-text text-transparent font-bold">{amount}</span>
         </div>
       </div>
 
@@ -125,30 +125,28 @@ const PaymentMethods = ({ amount, onBack, onPayNow }) => {
 
       {activeTab === 'UPI' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {upiMethods.map(m => (
-            <PaymentCard key={m.id} {...m} icon={FaBolt} onPayNow={onPayNow} />
+          {upiMethods.map((m, i) => (
+            <PaymentCard key={m.Bank_Id || i} method={m} icon={FaBolt} onPayNow={onPayNow} />
           ))}
+          {upiMethods.length === 0 && <div className="text-gray-500 col-span-3">No UPI methods available</div>}
         </div>
       )}
 
       {activeTab === 'BANK' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <PaymentCard
-            name="TEST"
-            badge="TEST"
-            limit="200 - 500000"
-            icon={FaUniversity}
-            qr={true}
-            onPayNow={onPayNow}
-          />
+          {bankMethods.map((m, i) => (
+            <PaymentCard key={m.Bank_Id || i} method={m} icon={FaUniversity} onPayNow={onPayNow} />
+          ))}
+          {bankMethods.length === 0 && <div className="text-gray-500 col-span-3">No BANK methods available</div>}
         </div>
       )}
 
       {activeTab === 'CRYPTO' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cryptoMethods.map(m => (
-            <PaymentCard key={m.id} {...m} icon={FaCoins} onPayNow={onPayNow} />
+          {cryptoMethods.map((m, i) => (
+            <PaymentCard key={m.Bank_Id || i} method={m} icon={FaCoins} onPayNow={onPayNow} />
           ))}
+          {cryptoMethods.length === 0 && <div className="text-gray-500 col-span-3">No CRYPTO methods available</div>}
         </div>
       )}
     </div>

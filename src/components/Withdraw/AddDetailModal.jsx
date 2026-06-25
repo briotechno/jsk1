@@ -8,7 +8,8 @@ const AddDetailModal = ({ isOpen, onClose, onAdd, type }) => {
     accountNumber: '',
     ifscCode: '',
     upiId: '',
-    walletAddress: ''
+    walletAddress: '',
+    walletQr: ''
   });
 
   if (!isOpen) return null;
@@ -27,7 +28,8 @@ const AddDetailModal = ({ isOpen, onClose, onAdd, type }) => {
       accountNumber: '',
       ifscCode: '',
       upiId: '',
-      walletAddress: ''
+      walletAddress: '',
+      walletQr: ''
     });
   };
 
@@ -113,18 +115,39 @@ const AddDetailModal = ({ isOpen, onClose, onAdd, type }) => {
           )}
 
           {type === 'CRYPTO' && (
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-bold text-gray-900 uppercase">Wallet Address</label>
-              <input
-                type="text"
-                name="walletAddress"
-                value={formData.walletAddress}
-                onChange={handleChange}
-                placeholder="Enter Wallet Address"
-                className="w-full border border-gray-300 rounded-[5px] p-2 text-sm outline-none focus:border-blue-500"
-                required
-              />
-            </div>
+            <>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-gray-900 uppercase">Wallet Address</label>
+                <input
+                  type="text"
+                  name="walletAddress"
+                  value={formData.walletAddress}
+                  onChange={handleChange}
+                  placeholder="Enter Wallet Address"
+                  className="w-full border border-gray-300 rounded-[5px] p-2 text-sm outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1 mt-2">
+                <label className="text-sm font-bold text-gray-900 uppercase">Upload QR Code (Optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const base64String = reader.result.split(',')[1] || reader.result;
+                        setFormData({ ...formData, walletQr: base64String });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full border border-gray-300 rounded-[5px] p-1.5 text-sm outline-none focus:border-blue-500 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0088CC]/10 file:text-[#0088CC] hover:file:bg-[#0088CC]/20"
+                />
+              </div>
+            </>
           )}
 
           {/* Modal Footer */}

@@ -6,8 +6,10 @@ import { FaSearchPlus, FaChevronDown, FaHome } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
 import SetButtonValuesModal from "./Modals/SetButtonValuesModal";
 import RulesModal from "./Modals/RulesModal";
+import { useAuth } from "../contexts/AuthContext";
 
-const Header = ({ isLoggedIn, setIsLoggedIn }) => {
+const Header = ({ onToggleSidebar }) => {
+  const { isLoggedIn, user, logout } = useAuth() || {};
   const location = useLocation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -15,29 +17,74 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
   const [showExposure, setShowExposure] = useState(true);
-  const [balance, setBalance] = useState("0.00");
-  const [exposure, setExposure] = useState("0.00");
+  const [news, setNews] = useState("Win Big Instantly with Scratch Lottery!");
+  
+  const balance = user?.balance || user?.Balance || "0.00";
+  const exposure = user?.exposure || user?.Liability || "0.00";
+  const username = user?.username || user?.userName || "";
+  const [searchInput, setSearchInput] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      const fetchBalance = async () => {
-        try {
-          const token = localStorage.getItem("loginToken") || "";
-          const response = await userController.getBalance(token);
-          if (response && response.error === "0") {
-            setBalance(response.Balance || "0.00");
-            setExposure(response.Liability || "0.00");
-          }
-        } catch (error) {
-          console.error("Failed to fetch balance", error);
+    const fetchInitialData = async () => {
+      try {
+        const token = localStorage.getItem("loginToken") || "";
+        const res = await userController.getNews(token);
+        if (res && res.error === "0" && res.msg) {
+          setNews(res.msg);
+        } else if (res && typeof res === 'string') {
+          setNews(res);
         }
-      };
-      
-      fetchBalance();
-      const interval = setInterval(fetchBalance, 10000); // Poll every 10s
-      return () => clearInterval(interval);
+      } catch (error) {
+        console.error("Failed to fetch news", error);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  // Balance fetching is handled by AuthContext
+
+  useEffect(() => {
+    let timeoutId;
+    if (searchInput.length >= 3) {
+      setSearchLoading(true);
+      setShowSearchResults(true);
+      timeoutId = setTimeout(() => {
+        performSearch(searchInput);
+      }, 500);
+    } else {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setShowSearchResults(false);
     }
-  }, [isLoggedIn]);
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  const performSearch = async (val) => {
+    try {
+      const token = localStorage.getItem('loginToken') || '';
+      const res = await userController.search(token, val);
+      
+      let results = [];
+      if (res && res.data && Array.isArray(res.data)) {
+        results = res.data;
+      } else if (res && Array.isArray(res)) {
+        results = res;
+      } else if (res && typeof res === 'object' && Object.keys(res).length > 0) {
+        // filter out error/message keys if they exist and just grab the event objects
+        results = Object.values(res).filter(item => typeof item === 'object' && item !== null && (item.GameName || item.Name));
+      }
+      
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Search failed:', err);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   const menuRoutes = {
     "Withdraw Statement": "/withdraw-statement",
@@ -83,12 +130,55 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
             {isLoggedIn ? (
               <div className="flex items-center gap-3 text-white">
                 <div className="flex items-center gap-3 mr-1 relative">
-                  <div className={`overflow-hidden transition-all duration-300 ease-in-out flex items-center ${isSearchOpen ? 'w-[180px] opacity-100 mr-2' : 'w-0 opacity-0'}`}>
+                  <div className={`overflow-hidden transition-all duration-300 ease-in-out flex items-center relative ${isSearchOpen ? 'w-[250px] opacity-100 mr-2' : 'w-0 opacity-0'}`}>
                     <input
                       type="text"
-                      placeholder="Search here"
+                      placeholder="Search Events"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onFocus={() => searchInput.length >= 3 && setShowSearchResults(true)}
+                      onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
                       className="w-full h-[35px] px-3 py-1 text-gray-800 text-[14px] outline-none rounded-none bg-white border border-transparent shadow-sm"
                     />
+                    {searchInput && (
+                      <button
+                        onClick={() => setSearchInput('')}
+                        className="absolute right-2 text-gray-400 hover:text-gray-600 bg-transparent border-none p-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    {showSearchResults && searchInput.length > 0 && (
+                      <div className="absolute top-[38px] left-0 w-full bg-white rounded-sm shadow-lg max-h-[300px] overflow-y-auto z-50">
+                        <ul className="list-none p-0 m-0">
+                          {searchLoading && (
+                            <li className="p-2 text-center text-gray-500 text-xs">Searching...</li>
+                          )}
+                          {!searchLoading && searchInput.length < 3 && (
+                            <li className="p-2 text-gray-400 text-xs">Enter 3 characters...</li>
+                          )}
+                          {!searchLoading && searchInput.length >= 3 && searchResults.length === 0 && (
+                            <li className="p-2 text-gray-400 text-xs">No events found</li>
+                          )}
+                          {!searchLoading && searchInput.length >= 3 && searchResults.map((res, index) => (
+                            <li key={res.Gid || index} className="border-b border-gray-100 last:border-0">
+                              <Link
+                                to={`/sport/${(res.Type || 'cricket').toLowerCase()}`}
+                                className="flex flex-col p-2 text-gray-800 hover:bg-gray-50 transition-colors no-underline"
+                                onClick={() => {
+                                  setSearchInput('');
+                                  setSearchResults([]);
+                                  setShowSearchResults(false);
+                                  setIsSearchOpen(false);
+                                }}
+                              >
+                                <span className="text-[13px] font-semibold text-gray-800">{res.GameName}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <FaSearchPlus
                     className="text-white text-[28px] cursor-pointer hover:scale-110 transition-transform shrink-0"
@@ -117,14 +207,14 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
                   Withdraw
                 </Link>
                 <div className="hidden sm:flex flex-col text-white ml-1 mr-2 cursor-default">
-                  <span className="text-[13px] font-bold leading-none">Balance:{balance}</span>
-                  <span className="text-[13px] font-bold leading-none mt-1">Exp:{exposure}</span>
+                  <span className="text-[13px] font-bold leading-none">Available Balance:{balance}</span>
+                  <span className="text-[13px] font-bold leading-none mt-1">Exposure:{exposure}</span>
                 </div>
                 <div
                   className="flex items-center gap-1 text-white font-bold cursor-pointer hover:text-white/90 relative"
                   onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
                 >
-                  <span className="text-[15px] max-w-[80px] truncate">Kingraja11</span>
+                  <span className="text-[15px] max-w-[80px] truncate">{username}</span>
                   <FaChevronDown size={10} className={`mt-0.5 transition-transform duration-300 ${isAccountMenuOpen ? 'rotate-180' : ''}`} />
 
                   {/* Account Dropdown Menu */}
@@ -166,7 +256,10 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
                       <div className="border-t border-gray-200 my-1"></div>
                       <div
                         className="transition-colors cursor-pointer hover:underline text-[#212529] hover:text-[#666] flex items-center px-4 w-full h-[27px] clear-both font-normal text-[16px] whitespace-nowrap bg-transparent border-0"
-                        onClick={() => setIsLoggedIn(false)} // Logout logic
+                        onClick={() => {
+                          setIsAccountMenuOpen(false);
+                          logout && logout();
+                        }}
                       >
                         SignOut
                       </div>
@@ -182,7 +275,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
                 </div>
                 <button
                   className="bg-[#045271] text-white px-4 py-2 rounded-none text-[16px] font-bold shadow-md hover:bg-[#03405a] transition-all duration-500 cursor-pointer"
-                  onClick={() => setIsLoggedIn(true)} // Dummy login for demo
                 >
                   Demo
                 </button>
@@ -202,8 +294,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
             )}
           </div>
           <div className="w-[300px] overflow-hidden whitespace-nowrap bg-transparent relative">
-            <div className="inline-block animate-marquee-text italic text-[14px] text-white">
-              Win Big Instantly with Scratch Lottery!
+            <div className="inline-block animate-marquee-text italic text-[14px] text-white" dangerouslySetInnerHTML={{ __html: news }}>
             </div>
           </div>
         </div>
@@ -223,13 +314,13 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
 
           {isLoggedIn ? (
             <div className="flex flex-col items-end text-white relative">
-              {showBalance && <span className="text-[13px] font-bold leading-tight">Balance:{balance}</span>}
+              {showBalance && <span className="text-[13px] font-bold leading-tight">Available Balance:{balance}</span>}
               <div
                 className="flex items-center gap-1 cursor-pointer mt-0.5"
                 onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
               >
-                {showExposure && <span className="text-[13px] font-bold leading-tight">Exp:{exposure}</span>}
-                <span className="text-[14px] font-bold leading-tight ml-1">Kingraja11</span>
+                {showExposure && <span className="text-[13px] font-bold leading-tight">Exposure:{exposure}</span>}
+                <span className="text-[14px] font-bold leading-tight ml-1">{username}</span>
                 <FaChevronDown size={10} className={`transition-transform duration-300 ${isAccountMenuOpen ? 'rotate-180' : ''}`} />
               </div>
 
@@ -278,7 +369,7 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
                       setShowBalance(!showBalance);
                     }}
                   >
-                    <span className="text-[15px] font-normal text-[#212529]">Balance</span>
+                    <span className="text-[15px] font-normal text-[#212529]">Available Balance</span>
                     <div className={`w-[16px] h-[16px] border border-gray-300 rounded-[2px] flex items-center justify-center transition-all ${showBalance ? 'bg-[#035273] border-[#035273]' : 'bg-white'}`}>
                       {showBalance && (
                         <svg className="w-[12px] h-[12px] text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
@@ -309,7 +400,10 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
                   <div className="border-t border-gray-200 my-1"></div>
                   <div
                     className="transition-colors cursor-pointer hover:underline text-[#212529] hover:text-[#666] flex items-center px-4 w-full h-[32px] clear-both font-normal text-[15px] whitespace-nowrap bg-transparent border-0"
-                    onClick={() => setIsLoggedIn(false)}
+                    onClick={() => {
+                      setIsAccountMenuOpen(false);
+                      logout && logout();
+                    }}
                   >
                     SignOut
                   </div>
@@ -320,7 +414,6 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
             <div className="flex items-center gap-1">
               <button
                 className="bg-[#045271] text-white px-3 py-1.5 font-bold text-[13px] shadow-sm"
-                onClick={() => setIsLoggedIn(true)}
               >
                 Demo
               </button>
@@ -341,9 +434,51 @@ const Header = ({ isLoggedIn, setIsLoggedIn }) => {
             </div>
             <input
               type="text"
-              className="w-full h-full bg-transparent outline-none pl-10 pr-2 text-white placeholder-white/70 text-[14px]"
-              placeholder=""
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onFocus={() => searchInput.length >= 3 && setShowSearchResults(true)}
+              onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+              className="w-full h-full bg-transparent outline-none pl-10 pr-8 text-white placeholder-white/70 text-[14px]"
+              placeholder="Search Events"
             />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput('')}
+                className="absolute right-2 top-0 bottom-0 text-white/50 hover:text-white bg-transparent border-none p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+            {showSearchResults && searchInput.length > 0 && (
+              <div className="absolute top-[38px] left-0 w-[calc(100vw-10px)] max-w-[350px] bg-white rounded-sm shadow-lg max-h-[250px] overflow-y-auto z-[1000] border border-gray-200">
+                <ul className="list-none p-0 m-0">
+                  {searchLoading && (
+                    <li className="p-2 text-center text-gray-500 text-xs">Searching...</li>
+                  )}
+                  {!searchLoading && searchInput.length < 3 && (
+                    <li className="p-2 text-gray-400 text-xs">Enter 3 characters...</li>
+                  )}
+                  {!searchLoading && searchInput.length >= 3 && searchResults.length === 0 && (
+                    <li className="p-2 text-gray-400 text-xs">No events found</li>
+                  )}
+                  {!searchLoading && searchInput.length >= 3 && searchResults.map((res, index) => (
+                    <li key={res.Gid || index} className="border-b border-gray-100 last:border-0">
+                      <Link
+                        to={`/sport/${(res.Type || 'cricket').toLowerCase()}`}
+                        className="flex flex-col p-2 text-gray-800 hover:bg-gray-50 transition-colors no-underline"
+                        onClick={() => {
+                          setSearchInput('');
+                          setSearchResults([]);
+                          setShowSearchResults(false);
+                        }}
+                      >
+                        <span className="text-[13px] font-semibold text-gray-800">{res.GameName || res.Name || 'Event'}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
           <Link to="/deposit" className="bg-[#146c43] text-white h-[36px] px-4 flex items-center justify-center font-bold text-[15px] min-w-[80px]">
             Deposit

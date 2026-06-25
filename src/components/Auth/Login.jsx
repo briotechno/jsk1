@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaUser, FaKey, FaHandPointDown } from 'react-icons/fa';
 import { authController } from '../../controller';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -12,6 +13,7 @@ export default function Login() {
   const [mobile, setMobile] = useState('');
   
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -27,6 +29,14 @@ export default function Login() {
         const token = response.LoginToken || response.apitoken || response.token;
         localStorage.setItem('loginToken', token);
         localStorage.setItem('username', response.username || username);
+        
+        login({
+          loginToken: token,
+          username: response.username || username,
+          balance: response.balance || '0.00',
+          exposure: response.exposure || '0.00'
+        });
+        
         navigate('/');
       } else {
         setError(response?.msg || 'Invalid credentials');

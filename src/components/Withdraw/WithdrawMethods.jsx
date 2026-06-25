@@ -2,48 +2,70 @@ import React, { useState } from 'react';
 import { FaUniversity, FaBolt, FaCoins, FaRegTimesCircle, FaChevronDown } from 'react-icons/fa';
 import { RiInformationLine } from 'react-icons/ri';
 import AddDetailModal from './AddDetailModal';
+import { walletController } from '../../controller';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
-const WithdrawMethods = () => {
-  const [activeTab, setActiveTab] = useState('BANK');
+const WithdrawMethods = ({ accounts, fetchAccounts, selectedAccountId, setSelectedAccountId, activeTab, setActiveTab }) => {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState(1);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [accounts, setAccounts] = useState({
-    BANK: [
-      { id: 1, accountName: 'efg', bankName: 'GHHH', accountNumber: '333333333333333', ifscCode: '333333333333333' }
-    ],
-    BANK_2: [
-      { id: 1, accountName: 'SSSSSS', bankName: 'SSSSSSSS', accountNumber: '2222222', ifscCode: 'SSS' }
-    ],
-    UPI: [
-      { id: 1, upiId: 'sfdfgvvvvvvv' }
-    ],
-    CRYPTO: [
-      { id: 1, walletAddress: 'ddddddddddddddddd' }
-    ]
-  });
+  const { user } = useAuth();
+  const { showToast } = useToast();
 
-  const handleDelete = (tab, id) => {
-    setAccounts(prev => ({
-      ...prev,
-      [tab]: prev[tab].filter(acc => acc.id !== id)
-    }));
+  const handleDelete = async (tab, id) => {
+    if (tab === 'CRYPTO') return; // USDT Wallet is just updated, not deleted this way
+    try {
+      const res = await walletController.deleteBankAccount(user.loginToken, id);
+      if (res && res.error === '0') {
+        showToast('Account removed', 'success');
+        fetchAccounts();
+      } else {
+        showToast(res?.message || 'Failed to remove account', 'error');
+      }
+    } catch (err) {
+      showToast('Error removing account', 'error');
+    }
   };
 
-  const handleAdd = (newData) => {
-    setAccounts(prev => ({
-      ...prev,
-      [activeTab]: [...prev[activeTab], { id: Date.now(), ...newData }]
-    }));
+  const handleAdd = async (newData) => {
+    try {
+      let res;
+      if (activeTab === 'CRYPTO') {
+        res = await walletController.updateUSDTWallet({
+          LoginToken: user.loginToken,
+          Waddress: newData.walletAddress,
+          WQr: newData.walletQr || ''
+        });
+      } else {
+        // Prepare bank save payload
+        res = await walletController.saveBankAccount({
+          LoginToken: user.loginToken,
+          ACname: newData.accountName || newData.upiId || 'Account',
+          Bank: activeTab === 'UPI' ? 'UPI' : (newData.bankName || 'Bank'),
+          ACholdername: newData.accountName || newData.upiId || 'Holder',
+          ACno: newData.accountNumber || newData.upiId,
+          Isfc: newData.ifscCode || 'IFSC0000000'
+        });
+      }
+
+      if (res && res.error === '0') {
+        showToast('Successfully added', 'success');
+        fetchAccounts();
+      } else {
+        showToast(res?.message || 'Failed to add', 'error');
+      }
+    } catch (err) {
+      showToast('Error adding detail', 'error');
+    }
     setShowAddModal(false);
   };
 
   const tabs = [
     { id: 'BANK', label: 'BANK', icon: FaUniversity },
-    { id: 'UPI', label: 'UPI', icon: FaBolt },
     { id: 'CRYPTO', label: 'CRYPTO', icon: FaCoins },
-    { id: 'BANK_2', label: 'BANK', icon: FaUniversity }, // Second bank as seen in image
   ];
+
+  const currentAccounts = accounts[activeTab] || [];
 
   return (
     <div className="p-4 bg-white min-h-[400px]">
@@ -52,7 +74,7 @@ const WithdrawMethods = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-[25px] py-[10px] rounded-[12px] font-medium text-[16px] transition-all duration-300 ease-in-out mr-[5px] ${activeTab === tab.id ? 'bg-[#0088CC] text-white shadow-[0_4px_15_rgba(168,85,247,0.4)]' : 'text-gray-600 hover:bg-gray-200'
+            className={`flex items-center gap-2 px-[25px] py-[10px] rounded-[12px] font-medium text-[16px] transition-all duration-300 ease-in-out mr-[5px] ${activeTab === tab.id ? 'bg-[#0088CC] text-white shadow-[0_4px_15px_rgba(168,85,247,0.4)]' : 'text-gray-600 hover:bg-gray-200'
               }`}
           >
             <tab.icon size={14} /> {tab.label}
@@ -74,7 +96,6 @@ const WithdrawMethods = () => {
             <div className="flex flex-col gap-1">
               <h3 className="text-gray-800 uppercase flex items-center gap-2" style={{ fontSize: '22px', fontWeight: '700' }}>
                 {activeTab === 'BANK' ? 'INSTANT WITHDRAWAL' : 
-                 activeTab === 'BANK_2' ? 'NORMAL WITHDRAWAL' :
                  activeTab === 'UPI' ? 'UPI PAYMENT' : 'Crypto Payment'}
                 <RiInformationLine size={20} className="text-gray-500 cursor-pointer mb-0.5" />
               </h3>
@@ -82,12 +103,6 @@ const WithdrawMethods = () => {
               {activeTab === 'BANK' && (
                 <div className="rounded-[5px] px-3 py-1 bg-[#d3e9f6] w-fit">
                   <span className="text-[#0088CC] text-xs font-bold uppercase">Express Withdrawal</span>
-                </div>
-              )}
-
-              {activeTab === 'BANK_2' && (
-                <div className="rounded-[5px] px-3 py-1 bg-[#d3e9f6] w-fit">
-                  <span className="text-[#0088CC] text-xs font-bold uppercase">Normal Withdrawal</span>
                 </div>
               )}
 
@@ -114,26 +129,26 @@ const WithdrawMethods = () => {
               fontSize: '16px'
             }}
           >
-            Add New
+            {activeTab === 'CRYPTO' && currentAccounts.length > 0 ? 'Update' : 'Add New'}
           </button>
         </div>
         
         {!isCollapsed && (
           <div className="animate-in slide-in-from-top-2 duration-300">
             <div className="p-4 flex flex-col gap-4">
-              {(accounts[activeTab] || []).map(acc => (
+              {currentAccounts.map(acc => (
                 <div 
-                  key={acc.id} 
+                  key={acc.Id || acc.id} 
                   className="flex items-center gap-4 cursor-pointer"
-                  onClick={() => setSelectedAccountId(acc.id)}
+                  onClick={() => setSelectedAccountId(acc.Id || acc.id)}
                 >
                   <div className="flex items-center justify-center">
                     <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-all ${
-                      selectedAccountId === acc.id 
+                      selectedAccountId === (acc.Id || acc.id) 
                       ? 'border-[#033E5D] bg-white' 
                       : 'border-[#c9cdd5] bg-white'
                     }`}>
-                      {selectedAccountId === acc.id && (
+                      {selectedAccountId === (acc.Id || acc.id) && (
                         <div className="w-[10px] h-[10px] rounded-full bg-[#033E5D]" />
                       )}
                     </div>
@@ -149,20 +164,21 @@ const WithdrawMethods = () => {
                     }}
                   >
                     <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-1 pr-6">
-                      {activeTab.startsWith('BANK') ? (
+                      {activeTab === 'BANK' ? (
                         <>
                           <span className="text-[14px] font-[400] text-gray-900 uppercase">Account Name</span>
-                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.accountName}</span>
+                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.ACholdername || acc.accountName}</span>
                           <span className="text-[14px] font-[400] text-gray-900 uppercase">Bank Name</span>
-                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.bankName}</span>
+                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.Bank || acc.bankName}</span>
                           <span className="text-[14px] font-[400] text-gray-900 uppercase">Account Number</span>
-                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.accountNumber}</span>
+                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.ACno || acc.accountNumber}</span>
                           <span className="text-[14px] font-[400] text-gray-900 uppercase">IFSC Code</span>
-                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.ifscCode}</span>
+                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.Isfc || acc.ifscCode}</span>
                         </>
                       ) : activeTab === 'UPI' ? (
                         <>
-                          <span className="text-[14px] font-[400] text-gray-900 col-span-2 text-right py-1 px-4">{acc.upiId}</span>
+                          <span className="text-[14px] font-[400] text-gray-900 uppercase">UPI ID</span>
+                          <span className="text-[14px] font-[400] text-gray-900 text-right">{acc.ACno || acc.upiId}</span>
                         </>
                       ) : (
                         <>
@@ -171,18 +187,23 @@ const WithdrawMethods = () => {
                         </>
                       )}
                     </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(activeTab, acc.id);
-                      }}
-                      className="absolute top-[-10px] right-[-10px] text-black bg-white rounded-full p-0.5 hover:text-red-500 transition-all border border-gray-200 shadow-sm z-10"
-                    >
-                      <FaRegTimesCircle size={22} />
-                    </button>
+                    {activeTab !== 'CRYPTO' && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(activeTab, acc.Id || acc.id);
+                        }}
+                        className="absolute top-[-10px] right-[-10px] text-black bg-white rounded-full p-0.5 hover:text-red-500 transition-all border border-gray-200 shadow-sm z-10"
+                      >
+                        <FaRegTimesCircle size={22} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
+              {currentAccounts.length === 0 && (
+                <div className="text-gray-500 text-sm">No {activeTab} accounts saved yet.</div>
+              )}
             </div>
           </div>
         )}
@@ -192,7 +213,7 @@ const WithdrawMethods = () => {
         isOpen={showAddModal} 
         onClose={() => setShowAddModal(false)} 
         onAdd={handleAdd}
-        type={activeTab.startsWith('BANK') ? 'BANK' : activeTab}
+        type={activeTab}
       />
     </div>
   );

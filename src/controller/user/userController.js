@@ -14,4 +14,5 @@ export const userController = {
   getWhatsAppLink: () => fetchAPI('/wplink', { LoginToken: '' }),
   getTurnover: (loginToken) => fetchAPI('/turnover', { LoginToken: loginToken }),
   getAccountStatement: (loginToken, sdate, edate) => fetchAPI('/pl', { LoginToken: loginToken, sdate, edate }),
+  search: (loginToken, keyword) => fetchAPI('/search', { LoginToken: loginToken, Keyword: keyword }),
 };

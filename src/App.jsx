@@ -8,6 +8,7 @@ import Header from './components/Header';
 import MatchDetail from './components/MatchDetail/MatchDetail';
 import Sidebar from './components/Sidebar/Sidebar';
 import AuthLayout from './components/Auth/AuthLayout';
+import PopupModal from './components/PopupModal';
 
 import TournamentDetail from './components/MatchDetail/TournamentDetail';
 
@@ -30,14 +31,12 @@ import ChangePassword from './components/Account/ChangePassword';
 // Dashboard layout with Header and Sidebar
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Lifted from Header
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
+      <PopupModal />
       <Header 
         onToggleSidebar={() => setSidebarOpen(p => !p)} 
-        isLoggedIn={isLoggedIn} 
-        setIsLoggedIn={setIsLoggedIn} 
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Overlay backdrop on mobile when sidebar open */}
@@ -61,7 +60,7 @@ function MainLayout() {
         {/* Content Area with Routes */}
         <div className="flex-1 overflow-auto bg-gray-50 contents-container">
           <Routes>
-            <Route path="/" element={<MainDashboard isLoggedIn={isLoggedIn} />} />
+            <Route path="/" element={<MainDashboard />} />
             <Route path="/sport/:sportName" element={<SportsPage />} />
             {/* <Route path="/match/:matchId" element={<MatchDetail />} /> */}
             <Route path="/match/:sport/:matchId" element={<MatchDetail />} />

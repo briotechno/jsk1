@@ -13,6 +13,8 @@ export const userController = {
   toggleFavourite: (loginToken, eid) => fetchAPI('/favourite', { LoginToken: loginToken, Eid: eid }),
   getWhatsAppLink: () => fetchAPI('/wplink', { LoginToken: '' }),
   getTurnover: (loginToken) => fetchAPI('/turnover', { LoginToken: loginToken }),
-  getAccountStatement: (loginToken, sdate, edate) => fetchAPI('/pl', { LoginToken: loginToken, sdate, edate }),
+  getAccountStatement: (loginToken, sdate, edate) => fetchAPI('/statement', { LoginToken: loginToken, sdate, edate }),
+  getBetStatement: (eid, loginToken) => fetchAPI('/statementbet', { Eid: eid, LoginToken: loginToken }),
+  getMyBets: (loginToken) => fetchAPI('/mybets', { LoginToken: loginToken }),
   search: (loginToken, keyword) => fetchAPI('/search', { LoginToken: loginToken, Keyword: keyword }),
 };

@@ -6,7 +6,13 @@ const StatementLayout = ({
   columns = [],
   statusOptions = ["All", "Success", "Pending", "Failed"],
   showStatusFilter = true,
-  statusLabel = "Status"
+  statusLabel = "Status",
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+  onSubmit,
+  onRowClick
 }) => {
   const [status, setStatus] = useState(statusOptions[0]);
 
@@ -22,7 +28,8 @@ const StatementLayout = ({
             <div className="flex items-center border border-gray-300 rounded-none px-3 py-0 w-full md:w-[200px] h-[38px] bg-white cursor-pointer hover:border-gray-400">
               <input
                 type="date"
-                defaultValue="2026-03-29"
+                value={startDate || "2026-03-29"}
+                onChange={(e) => onStartDateChange && onStartDateChange(e.target.value)}
                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
                 className="w-full h-full outline-none text-black text-[16px] font-normal pr-2 bg-transparent cursor-pointer"
               />
@@ -31,7 +38,8 @@ const StatementLayout = ({
             <div className="flex items-center border border-gray-300 rounded-none px-3 py-0 w-full md:w-[200px] h-[38px] bg-white cursor-pointer hover:border-gray-400">
               <input
                 type="date"
-                defaultValue="2026-03-31"
+                value={endDate || "2026-03-31"}
+                onChange={(e) => onEndDateChange && onEndDateChange(e.target.value)}
                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
                 className="w-full h-full outline-none text-black text-[16px] font-normal pr-2 bg-transparent cursor-pointer"
               />
@@ -49,7 +57,10 @@ const StatementLayout = ({
               </select>
             )}
 
-            <button className="bg-[#0088cc] text-white px-10 w-full md:w-auto h-[38px] flex items-center justify-center rounded-none font-normal text-[16px] hover:bg-blue-600 transition-colors uppercase">
+            <button 
+              onClick={onSubmit}
+              className="bg-[#0088cc] text-white px-10 w-full md:w-auto h-[38px] flex items-center justify-center rounded-none font-normal text-[16px] hover:bg-blue-600 transition-colors uppercase"
+            >
               Submit
             </button>
           </div>
@@ -92,7 +103,11 @@ const StatementLayout = ({
             </thead>
             <tbody>
               {data.length > 0 ? data.map((row, idx) => (
-                <tr key={idx} className="border-b border-gray-300 bg-[#E6E6E6] h-[33px]">
+                <tr 
+                  key={idx} 
+                  onClick={() => onRowClick && onRowClick(row, idx)}
+                  className={`border-b border-gray-300 bg-[#E6E6E6] h-[33px] ${onRowClick ? 'cursor-pointer hover:bg-gray-200' : ''}`}
+                >
                   {columns.map((_, i) => (
                     <td key={i} className={`px-2 py-0 text-[16px] text-black ${i !== columns.length - 1 ? 'border-r' : ''} border-gray-300 align-middle`}>
                        {/* Handle dynamic data here */}

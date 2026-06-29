@@ -8,11 +8,85 @@ import OddsTable from "./OddsTable";
 import RacingTable from "./RacingTable";
 import dashboardData from "../../data/dashboardData.json";
 import BannerModal from "../Modals/BannerModal";
+import { useSportsData } from "../../hooks/useSportsData";
+import { marketController } from "../../controller";
 
 const MainDashboard = ({ isLoggedIn }) => {
   const { matches, casinoGames, racing } = dashboardData;
   const [activeSport, setActiveSport] = useState("Cricket");
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+
+  // Live Sports & Racing States
+  const [racingData, setRacingData] = useState({});
+  const [racingLoading, setRacingLoading] = useState(false);
+
+  const { inplayEvents, todayEvents, upcomingEvents } = useSportsData(activeSport);
+  const liveMatches = [...inplayEvents, ...todayEvents, ...upcomingEvents];
+
+  // Helper to map live racing data to RacingTable format
+  const mapRacingData = (apiRacingArray) => {
+    const grouped = {};
+    if (!Array.isArray(apiRacingArray)) return grouped;
+    
+    apiRacingArray.forEach((item) => {
+      const region = item.Country || "Others";
+      if (!grouped[region]) {
+        grouped[region] = [];
+      }
+      
+      const times = (item.Events || [])
+        .map((ev) => {
+          if (!ev.EventTime) return "";
+          const parts = ev.EventTime.split(" ");
+          if (parts.length > 1) {
+            return parts[1].substring(0, 5);
+          }
+          return "";
+        })
+        .filter(Boolean);
+        
+      grouped[region].push({
+        track: item.Game_name || "Unknown Track",
+        times: times,
+        gid: item.gid || item.Event_Id,
+        events: item.Events
+      });
+    });
+    return grouped;
+  };
+
+  useEffect(() => {
+    if (activeSport === "Horse Racing" || activeSport === "Greyhound Racing") {
+      const fetchRacing = async () => {
+        setRacingLoading(true);
+        try {
+          const type = activeSport === "Horse Racing" ? "horse" : "dog";
+          const res = await marketController.getRacingData(type);
+          if (res && !res.error) {
+            setRacingData((prev) => ({
+              ...prev,
+              [activeSport]: mapRacingData(res)
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to fetch racing data:", err);
+        } finally {
+          setRacingLoading(false);
+        }
+      };
+      fetchRacing();
+      const interval = setInterval(fetchRacing, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeSport]);
+
+  const displayRacingData = (racingData[activeSport] && Object.keys(racingData[activeSport]).length > 0)
+    ? racingData[activeSport]
+    : racing[activeSport];
+
+  const displayMatches = (liveMatches && liveMatches.length > 0)
+    ? liveMatches
+    : matches.filter((match) => match.sport.toLowerCase() === activeSport.toLowerCase());
 
   useEffect(() => {
     // Show banner modal automatically when dashboard loads and user is logged in
@@ -38,10 +112,7 @@ const MainDashboard = ({ isLoggedIn }) => {
     }
   };
 
-  // Filter matches based on the active tab
-  const filteredMatches = matches.filter(
-    (match) => match.sport.toLowerCase() === activeSport.toLowerCase()
-  );
+
 
   return (
     <div className="flex-1 bg-gray-100 overflow-y-auto [scrollbar-width:none] font-sans mt-0.5 mx-0.5">
@@ -121,9 +192,9 @@ const MainDashboard = ({ isLoggedIn }) => {
 
       {/* Dynamic Content: OddsTable or RacingTable */}
       {activeSport === "Greyhound Racing" || activeSport === "Horse Racing" ? (
-        <RacingTable data={racing[activeSport]} />
+        <RacingTable data={displayRacingData} />
       ) : (
-        <OddsTable items={filteredMatches} />
+        <OddsTable items={displayMatches} />
       )}
 
       {/* Casino Grid */}

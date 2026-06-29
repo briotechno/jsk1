@@ -7,6 +7,22 @@ import { LuTv, LuGamepad } from "react-icons/lu";
 const OddsTable = ({ items }) => {
   const navigate = useNavigate();
 
+  const getPrice = (item, idx, fallback = "-") => {
+    const val = item.odds?.[idx];
+    if (val === undefined || val === null) {
+      return item.odds === undefined ? fallback : "-";
+    }
+    return (typeof val === 'object' && val !== null && val.price !== undefined) ? val.price : val;
+  };
+
+  const isPairLocked = (item, idx1, idx2, allowUndefinedLock = true) => {
+    if (item.suspended) return true;
+    if (item.odds === undefined) return allowUndefinedLock;
+    const p1 = getPrice(item, idx1);
+    const p2 = getPrice(item, idx2);
+    return (p1 === "-" || p1 === "") && (p2 === "-" || p2 === "");
+  };
+
   return (
     <div className="w-full mt-2">
       {/* Desktop View Table */}
@@ -86,13 +102,13 @@ const OddsTable = ({ items }) => {
             <div className="h-full border-l border-[#c7c8ca] relative">
               <div className="grid grid-cols-2 h-full">
                 <div className="h-full flex items-center justify-center bg-[#72bbee] border-r border-white/40">
-                  <span className="text-[14px] font-bold text-[#1b3f55]">{item.odds?.[0] || (item.odds === undefined ? "5.5" : "-")}</span>
+                  <span className="text-[14px] font-bold text-[#1b3f55]">{getPrice(item, 0, "5.5")}</span>
                 </div>
                 <div className="h-full flex items-center justify-center bg-[#f9a9ba]">
-                  <span className="text-[14px] font-bold text-[#1b3f55]">{item.odds?.[1] || (item.odds === undefined ? "1000" : "-")}</span>
+                  <span className="text-[14px] font-bold text-[#1b3f55]">{getPrice(item, 1, "1000")}</span>
                 </div>
               </div>
-              {(item.odds === undefined || (!item.odds?.[0] && !item.odds?.[1])) && (
+              {isPairLocked(item, 0, 1, true) && (
                 <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-xs flex items-center justify-center">
                   <FaLock className="text-white w-[14px] h-[14px]" />
                 </div>
@@ -103,13 +119,13 @@ const OddsTable = ({ items }) => {
             <div className="h-full border-l border-[#c7c8ca] relative">
               <div className="grid grid-cols-2 h-full">
                 <div className="h-full flex items-center justify-center bg-[#72bbee] border-r border-white/40">
-                  <span className="text-[#055172] text-[14px] font-bold">{item.odds?.[2] || (item.odds === undefined ? "28" : "-")}</span>
+                  <span className="text-[#055172] text-[14px] font-bold">{getPrice(item, 2, "28")}</span>
                 </div>
                 <div className="h-full flex items-center justify-center bg-[#f9a9ba]">
-                  <span className="text-pink-900 text-[14px] font-bold">{item.odds?.[3] || (item.odds === undefined ? "1000" : "-")}</span>
+                  <span className="text-pink-900 text-[14px] font-bold">{getPrice(item, 3, "1000")}</span>
                 </div>
               </div>
-              {(item.odds !== undefined && (!item.odds?.[2] && !item.odds?.[3])) && (
+              {isPairLocked(item, 2, 3, false) && (
                 <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-xs flex items-center justify-center">
                   <FaLock className="text-white w-[14px] h-[14px]" />
                 </div>
@@ -120,13 +136,13 @@ const OddsTable = ({ items }) => {
             <div className="h-full border-l border-[#c7c8ca] relative">
               <div className="grid grid-cols-2 h-full">
                 <div className="h-full flex items-center justify-center bg-[#72bbee] border-r border-white/40">
-                  <span className="text-[14px] font-bold text-[#055172]">{item.odds?.[4] || (item.odds === undefined ? "1.03" : "-")}</span>
+                  <span className="text-[14px] font-bold text-[#055172]">{getPrice(item, 4, "1.03")}</span>
                 </div>
                 <div className="h-full flex items-center justify-center bg-[#f9a9ba]">
-                  <span className="text-[14px] font-bold text-pink-900">{item.odds?.[5] || (item.odds === undefined ? "1.04" : "-")}</span>
+                  <span className="text-[14px] font-bold text-pink-900">{getPrice(item, 5, "1.04")}</span>
                 </div>
               </div>
-              {(item.odds === undefined || (!item.odds?.[4] && !item.odds?.[5])) && (
+              {isPairLocked(item, 4, 5, true) && (
                 <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-xs flex items-center justify-center">
                   <FaLock className="text-white w-[14px] h-[14px]" />
                 </div>
@@ -176,12 +192,12 @@ const OddsTable = ({ items }) => {
                {/* Pair 1 */}
                <div className="grid grid-cols-2 h-full relative border-r border-[#0000000a]">
                   <div className="flex items-center justify-center bg-[#72bbee] border-r border-[#ffffff40]">
-                     <span className="text-[13px] font-bold text-[#1b3f55]">{item.odds?.[0] || (item.odds === undefined ? "5.5" : "-")}</span>
+                     <span className="text-[13px] font-bold text-[#1b3f55]">{getPrice(item, 0, "5.5")}</span>
                   </div>
                   <div className="flex items-center justify-center bg-[#f9a9ba]">
-                     <span className="text-[13px] font-bold text-[#1b3f55]">{item.odds?.[1] || (item.odds === undefined ? "1000" : "-")}</span>
+                     <span className="text-[13px] font-bold text-[#1b3f55]">{getPrice(item, 1, "1000")}</span>
                   </div>
-                  {(item.odds === undefined || (!item.odds?.[0] && !item.odds?.[1])) && (
+                  {isPairLocked(item, 0, 1, true) && (
                      <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-[1px] flex items-center justify-center z-10">
                         <FaLock className="text-white w-[13px] h-[13px] drop-shadow-md" />
                      </div>
@@ -190,12 +206,12 @@ const OddsTable = ({ items }) => {
                {/* Pair X */}
                <div className="grid grid-cols-2 h-full relative border-r border-[#0000000a]">
                   <div className="flex items-center justify-center bg-[#72bbee] border-r border-[#ffffff40]">
-                     <span className="text-[13px] font-bold text-[#1b3f55]">{item.odds?.[2] || (item.odds === undefined ? "28" : "-")}</span>
+                     <span className="text-[13px] font-bold text-[#1b3f55]">{getPrice(item, 2, "28")}</span>
                   </div>
                   <div className="flex items-center justify-center bg-[#f9a9ba]">
-                     <span className="text-[13px] font-bold text-[#1b3f55]">{item.odds?.[3] || (item.odds === undefined ? "1000" : "-")}</span>
+                     <span className="text-[13px] font-bold text-[#1b3f55]">{getPrice(item, 3, "1000")}</span>
                   </div>
-                  {(item.odds !== undefined && (!item.odds?.[2] && !item.odds?.[3])) && (
+                  {isPairLocked(item, 2, 3, false) && (
                      <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-[1px] flex items-center justify-center z-10">
                         <FaLock className="text-white w-[13px] h-[13px] drop-shadow-md" />
                      </div>
@@ -204,12 +220,12 @@ const OddsTable = ({ items }) => {
                {/* Pair 2 */}
                <div className="grid grid-cols-2 h-full relative">
                   <div className="flex items-center justify-center bg-[#72bbee] border-r border-[#ffffff40]">
-                     <span className="text-[13px] font-bold text-[#1b3f55]">{item.odds?.[4] || (item.odds === undefined ? "1.03" : "-")}</span>
+                     <span className="text-[13px] font-bold text-[#1b3f55]">{getPrice(item, 4, "1.03")}</span>
                   </div>
                   <div className="flex items-center justify-center bg-[#f9a9ba]">
-                     <span className="text-[13px] font-bold text-[#1b3f55]">{item.odds?.[5] || (item.odds === undefined ? "1.04" : "-")}</span>
+                     <span className="text-[13px] font-bold text-[#1b3f55]">{getPrice(item, 5, "1.04")}</span>
                   </div>
-                  {(item.odds === undefined || (!item.odds?.[4] && !item.odds?.[5])) && (
+                  {isPairLocked(item, 4, 5, true) && (
                      <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-[1px] flex items-center justify-center z-10">
                         <FaLock className="text-white w-[13px] h-[13px] drop-shadow-md" />
                      </div>

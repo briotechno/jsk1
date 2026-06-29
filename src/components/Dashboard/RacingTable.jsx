@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MdMonitor } from "react-icons/md";
 
 const RacingTable = ({ data }) => {
+  const navigate = useNavigate();
   const regions = Object.keys(data || {});
   const [activeRegion, setActiveRegion] = useState(regions[0] || "");
 
@@ -45,7 +47,14 @@ const RacingTable = ({ data }) => {
               {item.times.map((time, tIdx) => (
                 <button
                   key={tIdx}
-                  className="px-[8px] py-[4px] bg-[#cccccc] text-[#333333] text-[13px] font-medium rounded-[4px] transition-colors min-w-[60px] h-[32px] flex items-center justify-center border border-gray-300 shadow-sm"
+                  onClick={() => {
+                    const event = item.events?.[tIdx];
+                    const sportPath = item.track.toLowerCase().includes("greyhound") ? "greyhound-racing" : "horse-racing";
+                    if (event) {
+                      navigate(`/match/${sportPath}/${item.gid}`);
+                    }
+                  }}
+                  className="px-[8px] py-[4px] bg-[#cccccc] text-[#333333] text-[13px] font-medium rounded-[4px] transition-colors min-w-[60px] h-[32px] flex items-center justify-center border border-gray-300 shadow-sm cursor-pointer hover:bg-[#b5b5b5]"
                 >
                   {time}
                 </button>

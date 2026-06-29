@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { LuTv } from "react-icons/lu";
 import { IoIosInformationCircle } from "react-icons/io";
@@ -6,6 +6,11 @@ import RacingTable from "./RacingTable";
 import { MultiRunnerOddsTable } from "./MarketTable";
 import BetSlip from "./BetSlip";
 import racingRunners from "../../data/racingRunners.json";
+
+import { useAuth } from "../../contexts/AuthContext";
+import { marketController } from "../../controller";
+import { useRatePolling } from "../../hooks/useRatePolling";
+import { getRunnerRates } from "../../utils/rateRefiner";
 
 // ─── Static match data ────────────────────────────────────────────────────────
 
@@ -48,7 +53,7 @@ const buildGenericMatch = (slug, sport) => {
   };
 };
 
-const Scoreboard = ({ team1, team2, time, status }) => (
+const Scoreboard = ({ team1, team2, time, status, html }) => (
   <div className="flex w-full h-[145px] mb-1 overflow-hidden shadow-sm">
     <div className="flex-1 bg-[#47918b] p-3 flex flex-col justify-between text-white border-r border-[#333]">
       <div className="text-[12px] opacity-90 font-bold uppercase tracking-wide">{status || "Not started"}</div>
@@ -68,10 +73,17 @@ const Scoreboard = ({ team1, team2, time, status }) => (
       </div>
       <div className="text-[32px] font-black tracking-widest mt-auto font-sans">{time || "04 : 39 : 10"}</div>
     </div>
-    <div className="flex-1 flex flex-col">
-      <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center text-gray-400 text-[14px] font-bold uppercase tracking-widest">
-        No data
-      </div>
+    <div className="flex-1 flex flex-col relative overflow-hidden">
+      {html ? (
+        <div 
+          className="flex-1 bg-[#1a1a1a] overflow-hidden" 
+          dangerouslySetInnerHTML={{ __html: html }} 
+        />
+      ) : (
+        <div className="flex-1 bg-[#1a1a1a] flex items-center justify-center text-gray-400 text-[14px] font-bold uppercase tracking-widest">
+          No data
+        </div>
+      )}
       <div className="h-[40px] bg-[#333] flex items-center justify-center text-gray-500 text-[12px]"></div>
     </div>
   </div>
@@ -182,14 +194,106 @@ const MatchDetail = () => {
   const [activeTab, setActiveTab] = useState("odds");
   const [activeBet, setActiveBet] = useState(null);
 
+  const { isLoggedIn, user } = useAuth();
+  const [gameData, setGameData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [scoreboardHtml, setScoreboardHtml] = useState(null);
+
+  const { liveRates, scoreboardHtml: liveScoreboardHtml } = useRatePolling(matchId, gameData, 1000);
+
+  useEffect(() => {
+    if (liveScoreboardHtml) {
+      setScoreboardHtml(liveScoreboardHtml);
+    }
+  }, [liveScoreboardHtml]);
+
+  const fetchGameData = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setIsLoading(true);
+      let res;
+      if (isLoggedIn && user?.loginToken) {
+        res = await marketController.getGameDataLogin(user.loginToken, matchId);
+      } else {
+        res = await marketController.getGameData(matchId);
+      }
+      if (res && !res.error) {
+        let parsed = typeof res === 'string' ? JSON.parse(res) : res;
+        if (parsed && parsed["0"]) parsed = parsed["0"];
+        setGameData(parsed);
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
+  }, [isLoggedIn, user?.loginToken, matchId]);
+
+  useEffect(() => {
+    if (matchId) {
+      fetchGameData(true);
+      const interval = setInterval(() => fetchGameData(false), 5000);
+      return () => clearInterval(interval);
+    }
+  }, [matchId, isLoggedIn, user?.loginToken, fetchGameData]);
+
+  const handleBetClick = (name, price, side) => {
+    setActiveBet({ name, price, side });
+  };
+
+  const getTableRunners = (market) => {
+    if (!market || !market.runners) return [];
+    const runnersList = Object.values(market.runners);
+    const mType = market.Type?.toUpperCase() || 'ODDS';
+    const mId = (market.MarketId?.toString().startsWith('1.') || market.marketid?.toString().startsWith('1.'))
+      ? (market.MarketId || market.marketid)
+      : (market.eid || market.MarketId || market.marketid);
+
+    const mRates = liveRates[mId];
+    
+    return runnersList.map((runner, idx) => {
+      const rId = runner.selectionId || runner.SelectionId || runner.id || idx;
+      const rates = getRunnerRates(mRates, rId, idx, mType);
+      const isRunnerSuspended = rates?.isRunnerSuspended || false;
+      
+      if (mType === 'BOOKMAKER') {
+        return {
+          name: runner.RunnerName || runner.name,
+          suspended: isRunnerSuspended,
+          back: rates ? { p: rates.back.p1 || '-', s: rates.back.v1 || '' } : '-',
+          lay: rates ? { p: rates.lay.p1 || '-', s: rates.lay.v1 || '' } : '-',
+        };
+      } else {
+        return {
+          name: runner.RunnerName || runner.name,
+          suspended: isRunnerSuspended,
+          b1: rates ? { p: rates.back.p1 || '-', s: rates.back.v1 || '' } : '-',
+          b2: rates ? { p: rates.back.p2 || '-', s: rates.back.v2 || '' } : '-',
+          b3: rates ? { p: rates.back.p3 || '-', s: rates.back.v3 || '' } : '-',
+          l1: rates ? { p: rates.lay.p1 || '-', s: rates.lay.v1 || '' } : '-',
+          l2: rates ? { p: rates.lay.p2 || '-', s: rates.lay.v2 || '' } : '-',
+          l3: rates ? { p: rates.lay.p3 || '-', s: rates.lay.v3 || '' } : '-',
+        };
+      }
+    });
+  };
+
   const staticMatch = matchesData[matchId];
   const effectiveSport = (sportParam || staticMatch?.sport || "cricket").toLowerCase();
   const isRacing = ["racing", "horse-racing", "greyhound-racing"].includes(effectiveSport);
   const match = staticMatch || buildGenericMatch(matchId || "unknown-v-unknown", effectiveSport);
 
-  const handleBetClick = (name, price, side) => {
-    setActiveBet({ name, price, side });
-  };
+  const eventList = gameData ? Object.values(gameData.events || {}) : [];
+  const matchOddsMarket = eventList.find(e => e.Type === 'ODDS' || e.name?.toUpperCase().includes('MATCH ODDS'));
+  const bookmakerMarket = eventList.find(e => e.Type === 'BOOKMAKER' || e.name?.toUpperCase().includes('BOOKMAKER'));
+
+  const displayTeam1 = gameData?.Team1 || match.team1;
+  const displayTeam2 = gameData?.Team2 || match.team2;
+  const displayTitle = gameData?.Game_name || match.title;
+  const displayDate = gameData?.DateTime || match.date;
+  const displayStatus = gameData?.status || (gameData?.Inplay === 'true' || gameData?.Inplay === 'Y' || gameData?.Inplay === true ? "In Play" : match.status);
+
+  const displayMatchOddsRunners = matchOddsMarket ? getTableRunners(matchOddsMarket) : [match.matchOdds.team1, match.matchOdds.team2];
+  const displayBookmakerRunners = bookmakerMarket ? getTableRunners(bookmakerMarket) : [match.bookmaker.team1, match.bookmaker.team2];
 
   return (
     <div className="flex flex-1 overflow-hidden h-full bg-[#e0e0e0] font-[family-name:var(--font-roboto-condensed)]">
@@ -200,28 +304,30 @@ const MatchDetail = () => {
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-1 shrink-0 h-[32px] mb-px px-1 pt-1 mb-1">
               <div className="flex-1 bg-[#055172] text-white px-3 h-full flex justify-between items-center text-[15px] font-bold">
-                <span className="uppercase tracking-tight truncate">{match.title}</span>
-                <span className="text-[11px] font-normal leading-none opacity-90">{match.date}</span>
+                <span className="uppercase tracking-tight truncate">{displayTitle}</span>
+                <span className="text-[11px] font-normal leading-none opacity-90">{displayDate}</span>
               </div>
             </div>
             <div className="flex-1 px-1 pt-0 overflow-y-auto [scrollbar-width:none]">
               <button onClick={() => navigate("/")} className="hidden md:flex items-center gap-1 text-[#055172] text-[12px] font-bold mb-1 hover:underline cursor-pointer"> ← Home </button>
+              
               <div className="md:block hidden">
-                {match.isLive && <Scoreboard team1={match.team1} team2={match.team2} time={match.time} status={match.status} />}
-                <MultiRunnerOddsTable title="MATCH_ODDS" runners={[match.matchOdds.team1, match.matchOdds.team2]} onBetClick={handleBetClick} />
-                <MultiRunnerOddsTable title="Bookmaker" runners={[match.bookmaker.team1, match.bookmaker.team2]} isBookmaker={true} onBetClick={handleBetClick} />
+                <Scoreboard team1={displayTeam1} team2={displayTeam2} time={gameData?.time || match.time} status={displayStatus} html={scoreboardHtml} />
+                <MultiRunnerOddsTable title={matchOddsMarket?.name || "MATCH_ODDS"} runners={displayMatchOddsRunners} onBetClick={handleBetClick} />
+                <MultiRunnerOddsTable title={bookmakerMarket?.name || "Bookmaker"} runners={displayBookmakerRunners} isBookmaker={true} onBetClick={handleBetClick} />
               </div>
+              
               <div className="md:hidden block">
                 {activeTab === "odds" && (
                   <>
-                    {match.isLive && <Scoreboard team1={match.team1} team2={match.team2} time={match.time} status={match.status} />}
+                    <Scoreboard team1={displayTeam1} team2={displayTeam2} time={gameData?.time || match.time} status={displayStatus} html={scoreboardHtml} />
                     {activeBet && (
                       <div className="mb-2">
                         <BetSlip selection={activeBet.name} odds={activeBet.price} side={activeBet.side} onCancel={() => setActiveBet(null)} />
                       </div>
                     )}
-                    <MultiRunnerOddsTable title="MATCH_ODDS" runners={[match.matchOdds.team1, match.matchOdds.team2]} onBetClick={handleBetClick} />
-                    <MultiRunnerOddsTable title="Bookmaker" runners={[match.bookmaker.team1, match.bookmaker.team2]} isBookmaker={true} onBetClick={handleBetClick} />
+                    <MultiRunnerOddsTable title={matchOddsMarket?.name || "MATCH_ODDS"} runners={displayMatchOddsRunners} onBetClick={handleBetClick} />
+                    <MultiRunnerOddsTable title={bookmakerMarket?.name || "Bookmaker"} runners={displayBookmakerRunners} isBookmaker={true} onBetClick={handleBetClick} />
                   </>
                 )}
               </div>

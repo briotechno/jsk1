@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FaLock } from "react-icons/fa";
+import { getRunnerRates, getMarketStatus } from "../../utils/rateRefiner";
 
 const SectionBlock = ({ title, children, defaultOpen = true, extraHeader }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -172,6 +173,89 @@ export const MultiRunnerOddsTable = ({ title, runners, maxLimit = "1.00", isBook
           animation: marquee 30s linear infinite;
         }
       `}} />
+    </SectionBlock>
+  );
+};
+
+export const FancyLineMarketTable = ({ title, markets, liveRates, onBetClick }) => {
+  const isFancy = title.toUpperCase().includes("FANCY");
+  const isLine = title.toUpperCase().includes("LINE");
+
+  return (
+    <SectionBlock title={title} defaultOpen={true}>
+      {/* Table Header Row */}
+      <div className="grid grid-cols-[1fr_80px_80px_100px] overflow-hidden border-b border-[#c7c8ca] text-[15px] font-bold text-center text-gray-800 min-h-[30px]">
+        <div className="bg-[#f2f2f2] border-r border-[#c7c8ca] flex items-center px-2 text-[15px] text-[#055172] font-bold leading-none">
+          Active Markets
+        </div>
+        <div className="bg-[#f9a9ba] text-[#7b1c2e] flex items-center justify-center border-r border-[#c7c8ca]">NO</div>
+        <div className="bg-[#72bbee] text-[#1b3f55] flex items-center justify-center border-r border-[#c7c8ca]">YES</div>
+        <div className="bg-[#f2f2f2] flex items-center justify-center text-[12px] font-semibold text-gray-600">Min/Max</div>
+      </div>
+
+      {/* Rows */}
+      {markets.map((m, idx) => {
+        const marketId = m.eid || m.MarketId || m.marketid || m.id;
+        const rateData = liveRates[marketId];
+        const marketType = m.Type || (isFancy ? 'FANCY' : 'LINE');
+        
+        const { isSuspended, msg: suspensionMsg } = getMarketStatus(rateData, marketType);
+        const rates = getRunnerRates(rateData, 0, idx, marketType);
+
+        // Suspension details
+        const isSusp = isSuspended || rates?.isRunnerSuspended;
+        const finalSuspMsg = rates?.suspensionMsg || suspensionMsg || 'SUSPENDED';
+
+        const name = m.name || m.RunnerName || "Fancy Market";
+        const minVal = m.min || "100";
+        const maxVal = m.max || "50K";
+
+        const backVal = rates?.back?.p1 || "-";
+        const backSize = rates?.back?.v1 || "-";
+        const layVal = rates?.lay?.p1 || "-";
+        const laySize = rates?.lay?.v1 || "-";
+
+        return (
+          <div key={marketId || idx} className="relative">
+            {isSusp && (
+              <div className="absolute inset-0 bg-[#373636d6] backdrop-blur-xs flex items-center justify-center z-20">
+                <span className="text-red-500 font-extrabold text-[15px] uppercase tracking-wider">{finalSuspMsg}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-[1fr_80px_80px_100px] border-b border-[#c7c8ca] min-h-[44px] bg-[#f7f7f7]">
+              {/* Market Name */}
+              <div className="flex items-center px-2 text-[14px] font-bold text-[#333] border-r border-gray-200 leading-tight">
+                {name}
+              </div>
+
+              {/* NO (Lay) Button */}
+              <div 
+                onClick={() => !isSusp && layVal !== "-" && onBetClick(name, layVal, "lay")}
+                className="relative flex flex-col items-center justify-center bg-[#f9a9ba] border-r border-[#c7c8ca] cursor-pointer hover:brightness-95 transition-all text-center"
+              >
+                <span className="text-[17px] font-bold text-[#7b1c2e] leading-tight">{layVal}</span>
+                <span className="text-[11px] font-medium text-[#7b1c2e] leading-tight">{laySize}</span>
+              </div>
+
+              {/* YES (Back) Button */}
+              <div 
+                onClick={() => !isSusp && backVal !== "-" && onBetClick(name, backVal, "back")}
+                className="relative flex flex-col items-center justify-center bg-[#72bbee] border-r border-[#c7c8ca] cursor-pointer hover:brightness-95 transition-all text-center"
+              >
+                <span className="text-[17px] font-bold text-[#1b3f55] leading-tight">{backVal}</span>
+                <span className="text-[11px] font-medium text-gray-700 leading-tight">{backSize}</span>
+              </div>
+
+              {/* Min/Max */}
+              <div className="flex flex-col items-center justify-center text-[10px] text-gray-500 font-bold leading-tight px-1 text-center bg-gray-50/50">
+                <div>{minVal}</div>
+                <div className="text-[9px] font-semibold text-gray-400 mt-0.5">{maxVal}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </SectionBlock>
   );
 };
